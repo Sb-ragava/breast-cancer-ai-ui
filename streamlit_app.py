@@ -33,7 +33,7 @@ class SwinClassifier(nn.Module):
     def forward(self, x):
         return self.base_model(x)
 
-@st.cache_resource
+#@st.cache_resource
 def load_model():
     model = SwinClassifier()
     model_url = "https://drive.google.com/uc?id=1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q"
