@@ -8,3 +8,4 @@ scikit-image
 reportlab
 pillow
 gdown
+opencv-python
