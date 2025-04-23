@@ -38,10 +38,19 @@ def load_model():
     model = SwinClassifier()
     model_url = "https://drive.google.com/uc?id=1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q"
     output_path = "swin_model.pth"
-    if not os.path.exists(output_path):
-        gdown.download(model_url, output_path, quiet=False)
-    model.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
-    model.eval()
+
+    try:
+        if not os.path.exists(output_path):
+            with st.spinner("🔄 Downloading model from Google Drive..."):
+                gdown.download(model_url, output_path, quiet=False)
+
+        with st.spinner("🔧 Loading model..."):
+            model.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
+            model.eval()
+            st.success("✅ Model loaded successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to load model: {e}")
+
     return model
 
 model = load_model()
