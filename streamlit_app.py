@@ -17,6 +17,7 @@ from pytorch_grad_cam.utils.image import preprocess_image, show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+import gdown
 
 # ---------------------- CONFIG ----------------------
 st.set_page_config(page_title="Breast Cancer AI Classifier", layout="wide")
