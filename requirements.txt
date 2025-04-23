@@ -9,3 +9,4 @@ reportlab
 pillow
 gdown
 opencv-python
+git+https://github.com/jacobgil/pytorch-grad-cam.git
