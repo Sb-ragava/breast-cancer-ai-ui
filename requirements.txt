@@ -9,6 +9,6 @@ scikit-image
 reportlab
 pillow
 gdown
-opencv-python-headless
+opencv-python
 timm
 git+https://github.com/jacobgil/pytorch-grad-cam.git
