@@ -4,12 +4,12 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image  # Use PIL for image handling
+from PIL import Image
 import timm
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
-import gdown
 import os
+import requests
 
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -44,7 +44,13 @@ class ResNet18Visualizer(nn.Module):
 # ✅ Download model if not exists
 swin_model_path = "swin_fusion_model.pth"
 if not os.path.exists(swin_model_path):
-    gdown.download("https://drive.google.com/file/d/1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q", swin_model_path, quiet=False)
+    file_id = "1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q"
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(swin_model_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
 
 # ✅ Load models
 swin_model = SwinClassifier()
@@ -53,31 +59,6 @@ swin_model.eval()
 
 resnet_model = ResNet18Visualizer()
 resnet_model.eval()
-
-# ✅ Preprocess image function
-def preprocess_image(img_file):
-    pil_img = Image.open(img_file).convert('RGB')
-    transform_tensor = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    ])
-    tensor_img = transform_tensor(pil_img).unsqueeze(0)
-    raw_img_np = np.array(pil_img.resize((224, 224))).astype(np.float32) / 255.0
-    return tensor_img, raw_img_np, pil_img.resize((224, 224))
-
-# ✅ Replace cv2-based scaling function with PIL-based one
-def scale_cam_image(cam_image: np.ndarray, img_size: tuple):
-    pil_img = Image.fromarray(cam_image)
-    pil_img = pil_img.resize(img_size, Image.ANTIALIAS)
-    return np.array(pil_img)
-
-# ✅ Modify other necessary parts where cv2 was previously used
-def deprocess_image(img: np.ndarray):
-    img = np.clip(img, 0, 255).astype(np.uint8)
-    img = Image.fromarray(img)
-    return img
 
 # ✅ Page 1: Upload Image
 def page_1():
@@ -173,6 +154,19 @@ def page_2():
         file_name="ig_image.png",
         mime="image/png"
     )
+
+# ✅ Preprocess image function
+def preprocess_image(img_file):
+    pil_img = Image.open(img_file).convert('RGB')
+    transform_tensor = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+    tensor_img = transform_tensor(pil_img).unsqueeze(0)
+    raw_img_np = np.array(pil_img.resize((224, 224))).astype(np.float32) / 255.0
+    return tensor_img, raw_img_np, pil_img.resize((224, 224))
 
 # ✅ Main function to control pages
 def main():
