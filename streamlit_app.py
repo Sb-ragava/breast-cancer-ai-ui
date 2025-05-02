@@ -44,7 +44,7 @@ class ResNet18Visualizer(nn.Module):
 # ✅ Download model if not exists
 swin_model_path = "swin_fusion_model.pth"
 if not os.path.exists(swin_model_path):
-    gdown.download("https://drive.google.com/file/d/1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q/view?usp=sharing", swin_model_path, quiet=False)
+    gdown.download("https://drive.google.com/file/d/1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q", swin_model_path, quiet=False)
 
 # ✅ Load models
 swin_model = SwinClassifier()
