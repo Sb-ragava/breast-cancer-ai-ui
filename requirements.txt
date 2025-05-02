@@ -3,6 +3,8 @@ torch
 torchvision
 captum
 matplotlib
+seaborn
+scikit-learn
 scikit-image
 reportlab
 pillow
