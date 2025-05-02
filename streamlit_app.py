@@ -4,11 +4,12 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
 from PIL import Image
 import timm
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
+import gdown
+import os
 
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -40,8 +41,12 @@ class ResNet18Visualizer(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+# ✅ Download model if not exists
+swin_model_path = "swin_fusion_model.pth"
+if not os.path.exists(swin_model_path):
+    gdown.download("https://drive.google.com/uc?id=1K60lvI-NDOWVCRzUekSLjZmQXqBoqKcn", swin_model_path, quiet=False)
+
 # ✅ Load models
-swin_model_path = "swin_fusion_model.pth"  # Adjust this path as per your model file location
 swin_model = SwinClassifier()
 swin_model.load_state_dict(torch.load(swin_model_path, map_location=torch.device('cpu')))
 swin_model.eval()
@@ -53,30 +58,24 @@ resnet_model.eval()
 def page_1():
     st.title("Welcome to the Image Classification App!")
     st.write("Upload an image for classification.")
-    
-    # Upload Image
+
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
-    
+
     if uploaded_file is not None:
         st.image(uploaded_file, caption="Uploaded Image.", use_column_width=True)
         st.write("")
         st.write("Classifying...")
 
-        # Preprocess image
-        image_path = uploaded_file.name
         input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
 
-        # Swin Prediction
         with torch.no_grad():
             output = swin_model(input_tensor)
             probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
-            pred_idx = int(np.argmax(probs))  # ensure it's int, not np.int64
+            pred_idx = int(np.argmax(probs))
             pred_class = class_names[pred_idx]
             confidence = probs[pred_idx]
 
-        # Predict Button
         if st.button("Predict"):
-            # Switch to page 2 (Results)
             st.session_state.pred_class = pred_class
             st.session_state.confidence = confidence
             st.session_state.probs = probs
@@ -88,36 +87,30 @@ def page_1():
 # ✅ Page 2: Prediction Results
 def page_2():
     st.title(f"Prediction Results: {st.session_state.pred_class}")
-    
+
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
-    
-    # Show Prediction Charts (Pie, Bar)
+
     plt.figure(figsize=(12, 4))
-    
-    # Bar chart
+
     plt.subplot(1, 2, 1)
     sns.barplot(x=class_names, y=st.session_state.probs, palette='coolwarm')
     plt.title("Prediction Probabilities (Bar Chart)")
     plt.ylabel("Probability")
-    
-    # Pie chart
+
     plt.subplot(1, 2, 2)
     plt.pie(st.session_state.probs, labels=class_names, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('coolwarm'))
     plt.title("Prediction Confidence (Pie Chart)")
-    
+
     plt.tight_layout()
     st.pyplot()
 
-    # Grad-CAM++ Explanation
     target_layers = [resnet_model.model.layer4[-1]]
     cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
     grayscale_cam = cam(input_tensor=st.session_state.input_tensor, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
     visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
 
-    # Display Grad-CAM++ Image
     st.image(visualization, caption="Grad-CAM++ Explanation", use_column_width=True)
 
-    # Integrated Gradients Explanation
     ig = IntegratedGradients(resnet_model)
     st.session_state.input_tensor.requires_grad_()
     baseline = torch.zeros_like(st.session_state.input_tensor)
@@ -126,37 +119,32 @@ def page_2():
                                    target=st.session_state.pred_idx,
                                    n_steps=50)
 
-    # Convert for IG visualization
-    attr_ig_np = attributions_ig.squeeze().detach().numpy()     # shape: (3, 224, 224)
+    attr_ig_np = attributions_ig.squeeze().detach().numpy()
     input_np = st.session_state.input_tensor.squeeze().permute(1, 2, 0).detach().numpy()
-    input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]  # unnormalize
+    input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
     input_np = np.clip(input_np, 0, 1)
-    
-    heatmap = np.sum(attr_ig_np, axis=0, keepdims=True)         # (1, H, W)
-    heatmap = np.transpose(heatmap, (1, 2, 0))                   # (H, W, 1)
 
-    # Display IG Image
+    heatmap = np.sum(attr_ig_np, axis=0, keepdims=True)
+    heatmap = np.transpose(heatmap, (1, 2, 0))
+
     st.image(heatmap, caption="Integrated Gradients Explanation", use_column_width=True)
 
-    # Prediction Summary
     st.write("### Prediction Summary:")
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
     st.write(f"2. Confidence of the prediction: {st.session_state.confidence*100:.2f}%")
     st.write(f"3. Key regions of the image were highlighted using Grad-CAM++.")
     st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction.")
 
-    # Download Image (Grad-CAM++)
     st.download_button(
         label="Download Grad-CAM++ Image",
-        data=visualization,
+        data=Image.fromarray(visualization),
         file_name="grad_cam_image.png",
         mime="image/png"
     )
 
-    # Download Image (IG)
     st.download_button(
         label="Download IG Image",
-        data=heatmap,
+        data=Image.fromarray((heatmap.squeeze() * 255).astype(np.uint8)),
         file_name="ig_image.png",
         mime="image/png"
     )
@@ -177,11 +165,10 @@ def preprocess_image(img_file):
 # ✅ Main function to control pages
 def main():
     st.set_page_config(page_title="Streamlit Multi-Page App")
-    
+
     if 'pred_class' not in st.session_state:
         st.session_state.pred_class = None
-    
-    # Sidebar navigation
+
     page = st.sidebar.radio("Choose a page", ("Home", "Prediction Results"))
 
     if page == "Home":
