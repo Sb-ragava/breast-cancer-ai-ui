@@ -9,7 +9,7 @@ import timm
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
 import os
-import requests
+import gdown
 
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -45,12 +45,8 @@ class ResNet18Visualizer(nn.Module):
 swin_model_path = "swin_fusion_model.pth"
 if not os.path.exists(swin_model_path):
     file_id = "1cOfU1mvbGNpt0gx2hGRzseoQMJXv7F6q"
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(swin_model_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
+    url = f"https://drive.google.com/uc?id={file_id}"
+    gdown.download(url, swin_model_path, quiet=False)
 
 # ✅ Load models
 swin_model = SwinClassifier()
@@ -186,3 +182,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
