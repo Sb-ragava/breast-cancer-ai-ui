@@ -48,7 +48,7 @@ if not os.path.exists(swin_model_path):
 
 # ✅ Load models
 swin_model = SwinClassifier()
-swin_model.load_state_dict(torch.load(swin_model_path, map_location=torch.device('cpu')))
+swin_model.load_state_dict(torch.load(swin_model_path, map_location=torch.device('cpu'), weights_only=False))
 swin_model.eval()
 
 resnet_model = ResNet18Visualizer()
