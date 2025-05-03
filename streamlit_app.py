@@ -65,19 +65,17 @@ def page_1():
 
     if uploaded_file is not None:
         st.image(uploaded_file, caption="Uploaded Image.", use_container_width=True)
-        st.write("")
-        st.write("Classifying...")
-
-        input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
-
-        with torch.no_grad():
-            output = swin_model(input_tensor)
-            probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
-            pred_idx = int(np.argmax(probs))
-            pred_class = class_names[pred_idx]
-            confidence = probs[pred_idx]
 
         if st.button("Predict"):
+            input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
+
+            with torch.no_grad():
+                output = swin_model(input_tensor)
+                probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
+                pred_idx = int(np.argmax(probs))
+                pred_class = class_names[pred_idx]
+                confidence = probs[pred_idx]
+
             st.session_state.pred_class = pred_class
             st.session_state.confidence = confidence
             st.session_state.probs = probs
