@@ -72,8 +72,6 @@ def page_1():
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
 
     if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Image.", use_container_width=True)
-
         if st.button("Predict"):
             input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
 
@@ -90,6 +88,7 @@ def page_1():
             st.session_state.raw_img_np = raw_img_np
             st.session_state.input_tensor = input_tensor
             st.session_state.pred_idx = pred_idx
+            st.session_state.pil_resized = pil_resized
             st.session_state.page = 2
             st.rerun()
 
@@ -138,12 +137,14 @@ def page_2():
     heatmap = np.transpose(heatmap, (1, 2, 0))
     heatmap = np.clip(heatmap, 0, 1)
 
-    # ✅ Display side-by-side comparison of Grad-CAM++ and IG
+    # ✅ Display uploaded image and explanations side by side
     st.write("### Explainability Visualizations")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.image(visualization, caption="Grad-CAM++", use_container_width=True)
+        st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
     with col2:
+        st.image(visualization, caption="Grad-CAM++", use_container_width=True)
+    with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
     st.write("### Prediction Summary:")
