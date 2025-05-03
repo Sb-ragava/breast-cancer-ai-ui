@@ -1,5 +1,7 @@
 import streamlit as st
-st.set_page_config(page_title="OncoAid - Breast Cancer Detection", layout="wide")
+
+# ✅ Must be first Streamlit command
+st.set_page_config(page_title="OncoAid", layout="wide")
 
 import torch
 import torch.nn as nn
@@ -80,6 +82,7 @@ def page_1():
     ✅ A detailed case summary
     """)
 
+    uploaded_file = None
     with st.container():
         tab1, tab2 = st.tabs(["Upload", "Predict"])
 
@@ -148,6 +151,10 @@ def page_1():
                     if st.button(f"Delete {len(st.session_state.prediction_history) - idx}"):
                         st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
                         st.rerun()
+
+# ✅ Remaining code: page_2(), preprocess_image(), and main()
+# Add them below if needed
+
 
 # ✅ Page 2: Prediction Results
 def page_2():
