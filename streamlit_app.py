@@ -10,6 +10,7 @@ import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
 import os
 import gdown
+from io import BytesIO
 
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -55,6 +56,13 @@ swin_model.eval()
 
 resnet_model = ResNet18Visualizer()
 resnet_model.eval()
+
+# ✅ Utility to convert image to bytes
+def image_to_bytes(img: Image.Image) -> bytes:
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf.read()
 
 # ✅ Page 1: Upload Image
 def page_1():
@@ -136,7 +144,7 @@ def page_2():
     with col1:
         st.image(visualization, caption="Grad-CAM++", use_container_width=True)
     with col2:
-        st.image(np.clip(heatmap, 0, 1), caption="Integrated Gradients", use_container_width=True)
+        st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
     st.write("### Prediction Summary:")
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
@@ -144,16 +152,19 @@ def page_2():
     st.write(f"3. Key regions of the image were highlighted using Grad-CAM++.")
     st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction.")
 
+    gradcam_pil = Image.fromarray(visualization)
+    ig_pil = Image.fromarray((heatmap.squeeze() * 255).astype(np.uint8))
+
     st.download_button(
         label="Download Grad-CAM++ Image",
-        data=Image.fromarray(visualization),
+        data=image_to_bytes(gradcam_pil),
         file_name="grad_cam_image.png",
         mime="image/png"
     )
 
     st.download_button(
         label="Download IG Image",
-        data=Image.fromarray((heatmap.squeeze() * 255).astype(np.uint8)),
+        data=image_to_bytes(ig_pil),
         file_name="ig_image.png",
         mime="image/png"
     )
