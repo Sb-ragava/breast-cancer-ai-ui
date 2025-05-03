@@ -64,7 +64,7 @@ def page_1():
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
 
     if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Image.", use_column_width=True)
+        st.image(uploaded_file, caption="Uploaded Image.", use_container_width=True)
         st.write("")
         st.write("Classifying...")
 
@@ -92,26 +92,29 @@ def page_2():
 
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
-    plt.figure(figsize=(12, 4))
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
 
-    plt.subplot(1, 2, 1)
-    sns.barplot(x=class_names, y=st.session_state.probs, palette='coolwarm')
-    plt.title("Prediction Probabilities (Bar Chart)")
-    plt.ylabel("Probability")
+    sns.barplot(x=class_names, y=st.session_state.probs, hue=class_names, palette='coolwarm', legend=False, ax=axs[0])
+    axs[0].set_title("Prediction Probabilities (Bar Chart)")
+    axs[0].set_ylabel("Probability")
 
-    plt.subplot(1, 2, 2)
-    plt.pie(st.session_state.probs, labels=class_names, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('coolwarm'))
-    plt.title("Prediction Confidence (Pie Chart)")
+    axs[1].pie(
+        st.session_state.probs,
+        labels=class_names,
+        autopct='%1.1f%%',
+        startangle=90,
+        colors=sns.color_palette('coolwarm')
+    )
+    axs[1].set_title("Prediction Confidence (Pie Chart)")
 
-    plt.tight_layout()
-    st.pyplot()
+    st.pyplot(fig)
 
     target_layers = [resnet_model.model.layer4[-1]]
     cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
     grayscale_cam = cam(input_tensor=st.session_state.input_tensor, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
     visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
 
-    st.image(visualization, caption="Grad-CAM++ Explanation", use_column_width=True)
+    st.image(visualization, caption="Grad-CAM++ Explanation", use_container_width=True)
 
     ig = IntegratedGradients(resnet_model)
     st.session_state.input_tensor.requires_grad_()
@@ -129,7 +132,7 @@ def page_2():
     heatmap = np.sum(attr_ig_np, axis=0, keepdims=True)
     heatmap = np.transpose(heatmap, (1, 2, 0))
 
-    st.image(heatmap, caption="Integrated Gradients Explanation", use_column_width=True)
+    st.image(heatmap, caption="Integrated Gradients Explanation", use_container_width=True)
 
     st.write("### Prediction Summary:")
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
@@ -175,4 +178,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
