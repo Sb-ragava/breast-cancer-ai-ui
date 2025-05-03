@@ -1,7 +1,5 @@
 import streamlit as st
-
-# ✅ Must be first Streamlit command
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="OncoAid - Breast Cancer Detection", layout="wide")
 
 import torch
 import torch.nn as nn
