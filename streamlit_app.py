@@ -113,8 +113,6 @@ def page_2():
     grayscale_cam = cam(input_tensor=st.session_state.input_tensor, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
     visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
 
-    st.image(visualization, caption="Grad-CAM++ Explanation", use_container_width=True)
-
     ig = IntegratedGradients(resnet_model)
     st.session_state.input_tensor.requires_grad_()
     baseline = torch.zeros_like(st.session_state.input_tensor)
@@ -130,8 +128,15 @@ def page_2():
 
     heatmap = np.sum(attr_ig_np, axis=0, keepdims=True)
     heatmap = np.transpose(heatmap, (1, 2, 0))
+    heatmap = np.clip(heatmap, 0, 1)
 
-    st.image(heatmap, caption="Integrated Gradients Explanation", use_container_width=True)
+    # ✅ Display side-by-side comparison of Grad-CAM++ and IG
+    st.write("### Explainability Visualizations")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image(visualization, caption="Grad-CAM++", use_container_width=True)
+    with col2:
+        st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
     st.write("### Prediction Summary:")
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
@@ -181,4 +186,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
