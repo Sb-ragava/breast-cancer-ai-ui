@@ -83,7 +83,7 @@ def page_1():
             st.session_state.input_tensor = input_tensor
             st.session_state.pred_idx = pred_idx
             st.session_state.page = 2
-            st.experimental_rerun()
+            st.rerun()
 
 # ✅ Page 2: Prediction Results
 def page_2():
@@ -181,3 +181,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
