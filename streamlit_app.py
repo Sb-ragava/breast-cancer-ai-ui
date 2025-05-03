@@ -1,4 +1,8 @@
 import streamlit as st
+
+# ✅ Must be first Streamlit command
+st.set_page_config(layout="wide")
+
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -66,7 +70,6 @@ def image_to_bytes(img: Image.Image) -> bytes:
 
 # ✅ Page 1: Upload Image
 def page_1():
-    st.set_page_config(layout="wide")
     st.title("👋 Welcome to OncoAid")
     st.markdown("""
     ## Your AI Assistant for Breast Cancer Detection and Explainability
