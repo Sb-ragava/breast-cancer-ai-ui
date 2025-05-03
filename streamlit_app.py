@@ -136,7 +136,7 @@ def page_2():
     with col1:
         st.image(visualization, caption="Grad-CAM++", use_container_width=True)
     with col2:
-        st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
+        st.image(np.clip(heatmap, 0, 1), caption="Integrated Gradients", use_container_width=True)
 
     st.write("### Prediction Summary:")
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
