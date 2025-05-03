@@ -66,33 +66,66 @@ def image_to_bytes(img: Image.Image) -> bytes:
 
 # ✅ Page 1: Upload Image
 def page_1():
-    st.title("Welcome to the Image Classification App!")
-    st.write("Upload an image for classification.")
+    st.set_page_config(layout="wide")
+    st.title("👋 Welcome to OncoAid")
+    st.markdown("""
+    ## Your AI Assistant for Breast Cancer Detection and Explainability
 
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+    OncoAid is an intelligent assistant designed to help detect breast cancer across multiple imaging modalities — Ultrasound, DDSM Mammography, and Histopathology. It uses state-of-the-art AI models to classify tumors and provides visual explanations like Grad-CAM++ and Integrated Gradients to support clinical decision-making.
 
-    if uploaded_file is not None:
-        if st.button("Predict"):
-            input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
+    **Upload an image to get started and receive:**
+    ✅ AI-based prediction  
+    ✅ Visual region importance maps  
+    ✅ A detailed case summary
+    """)
 
-            with torch.no_grad():
-                output = swin_model(input_tensor)
-                probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
-                pred_idx = int(np.argmax(probs))
-                pred_class = class_names[pred_idx]
-                confidence = probs[pred_idx]
+    with st.container():
+        tab1, tab2 = st.tabs(["Upload", "Predict"])
 
-            st.session_state.pred_class = pred_class
-            st.session_state.confidence = confidence
-            st.session_state.probs = probs
-            st.session_state.raw_img_np = raw_img_np
-            st.session_state.input_tensor = input_tensor
-            st.session_state.pred_idx = pred_idx
-            st.session_state.pil_resized = pil_resized
-            st.session_state.page = 2
-            st.rerun()
+        with tab1:
+            uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+
+        with tab2:
+            if uploaded_file is not None:
+                st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+                if st.button("Predict"):
+                    input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
+
+                    with torch.no_grad():
+                        output = swin_model(input_tensor)
+                        probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
+                        pred_idx = int(np.argmax(probs))
+                        pred_class = class_names[pred_idx]
+                        confidence = probs[pred_idx]
+
+                    if 'prediction_history' not in st.session_state:
+                        st.session_state.prediction_history = []
+
+                    st.session_state.prediction_history.append({
+                        'pred_class': pred_class,
+                        'confidence': confidence,
+                        'probs': probs,
+                        'raw_img_np': raw_img_np,
+                        'input_tensor': input_tensor,
+                        'pred_idx': pred_idx,
+                        'pil_resized': pil_resized
+                    })
+
+                    if len(st.session_state.prediction_history) > 10:
+                        st.session_state.prediction_history.pop(0)
+
+                    st.session_state.pred_class = pred_class
+                    st.session_state.confidence = confidence
+                    st.session_state.probs = probs
+                    st.session_state.raw_img_np = raw_img_np
+                    st.session_state.input_tensor = input_tensor
+                    st.session_state.pred_idx = pred_idx
+                    st.session_state.pil_resized = pil_resized
+                    st.session_state.page = 2
+                    st.rerun()
 
     if 'prediction_history' in st.session_state and st.session_state.prediction_history:
+        st.markdown("---")
         with st.expander("Previous Predictions", expanded=True):
             for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
                 st.markdown(f"**Prediction {len(st.session_state.prediction_history) - idx}:**")
