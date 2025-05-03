@@ -69,29 +69,6 @@ def page_1():
     st.title("Welcome to the Image Classification App!")
     st.write("Upload an image for classification.")
 
-    if 'prediction_history' in st.session_state and st.session_state.prediction_history:
-        with st.expander("Previous Predictions", expanded=True):
-            for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
-                st.markdown(f"**Prediction {len(st.session_state.prediction_history) - idx}:**")
-                st.write(f"- Class: {entry['pred_class']}")
-                st.write(f"- Confidence: {entry['confidence']*100:.2f}%")
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    if st.button(f"View {len(st.session_state.prediction_history) - idx}"):
-                        st.session_state.pred_class = entry['pred_class']
-                        st.session_state.confidence = entry['confidence']
-                        st.session_state.probs = entry['probs']
-                        st.session_state.raw_img_np = entry['raw_img_np']
-                        st.session_state.input_tensor = entry['input_tensor']
-                        st.session_state.pred_idx = entry['pred_idx']
-                        st.session_state.pil_resized = entry['pil_resized']
-                        st.session_state.page = 2
-                        st.rerun()
-                with col2:
-                    if st.button(f"Delete {len(st.session_state.prediction_history) - idx}"):
-                        st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
-                        st.rerun()
-
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
 
     if uploaded_file is not None:
@@ -114,6 +91,29 @@ def page_1():
             st.session_state.pil_resized = pil_resized
             st.session_state.page = 2
             st.rerun()
+
+    if 'prediction_history' in st.session_state and st.session_state.prediction_history:
+        with st.expander("Previous Predictions", expanded=True):
+            for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
+                st.markdown(f"**Prediction {len(st.session_state.prediction_history) - idx}:**")
+                st.write(f"- Class: {entry['pred_class']}")
+                st.write(f"- Confidence: {entry['confidence']*100:.2f}%")
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    if st.button(f"View {len(st.session_state.prediction_history) - idx}"):
+                        st.session_state.pred_class = entry['pred_class']
+                        st.session_state.confidence = entry['confidence']
+                        st.session_state.probs = entry['probs']
+                        st.session_state.raw_img_np = entry['raw_img_np']
+                        st.session_state.input_tensor = entry['input_tensor']
+                        st.session_state.pred_idx = entry['pred_idx']
+                        st.session_state.pil_resized = entry['pil_resized']
+                        st.session_state.page = 2
+                        st.rerun()
+                with col2:
+                    if st.button(f"Delete {len(st.session_state.prediction_history) - idx}"):
+                        st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
+                        st.rerun()
 
 # ✅ Page 2: Prediction Results
 def page_2():
