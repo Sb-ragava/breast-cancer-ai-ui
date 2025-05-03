@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 import timm
 import seaborn as sns
-from sklearn.metrics import classification\_report, confusion\_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 import os
 import gdown
 from io import BytesIO
