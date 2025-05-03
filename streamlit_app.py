@@ -51,7 +51,7 @@ if not os.path.exists(swin_model_path):
 
 # ✅ Load models
 swin_model = SwinClassifier()
-swin_model.load_state_dict(torch.load(swin_model_path, map_location=torch.device('cpu'), weights_only=False))
+swin_model.load_state_dict(torch.load(swin_model_path, map_location=torch.device('cpu')))
 swin_model.eval()
 
 resnet_model = ResNet18Visualizer()
@@ -68,6 +68,29 @@ def image_to_bytes(img: Image.Image) -> bytes:
 def page_1():
     st.title("Welcome to the Image Classification App!")
     st.write("Upload an image for classification.")
+
+    if 'prediction_history' in st.session_state and st.session_state.prediction_history:
+        with st.expander("Previous Predictions", expanded=True):
+            for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
+                st.markdown(f"**Prediction {len(st.session_state.prediction_history) - idx}:**")
+                st.write(f"- Class: {entry['pred_class']}")
+                st.write(f"- Confidence: {entry['confidence']*100:.2f}%")
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    if st.button(f"View {len(st.session_state.prediction_history) - idx}"):
+                        st.session_state.pred_class = entry['pred_class']
+                        st.session_state.confidence = entry['confidence']
+                        st.session_state.probs = entry['probs']
+                        st.session_state.raw_img_np = entry['raw_img_np']
+                        st.session_state.input_tensor = entry['input_tensor']
+                        st.session_state.pred_idx = entry['pred_idx']
+                        st.session_state.pil_resized = entry['pil_resized']
+                        st.session_state.page = 2
+                        st.rerun()
+                with col2:
+                    if st.button(f"Delete {len(st.session_state.prediction_history) - idx}"):
+                        st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
+                        st.rerun()
 
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
 
@@ -137,7 +160,6 @@ def page_2():
     heatmap = np.transpose(heatmap, (1, 2, 0))
     heatmap = np.clip(heatmap, 0, 1)
 
-    # ✅ Display uploaded image and explanations side by side
     st.write("### Explainability Visualizations")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -169,6 +191,25 @@ def page_2():
         file_name="ig_image.png",
         mime="image/png"
     )
+
+    if st.button("Back"):
+        if 'prediction_history' not in st.session_state:
+            st.session_state.prediction_history = []
+        st.session_state.prediction_history.append({
+            "pred_class": st.session_state.pred_class,
+            "confidence": st.session_state.confidence,
+            "probs": st.session_state.probs,
+            "raw_img_np": st.session_state.raw_img_np,
+            "input_tensor": st.session_state.input_tensor,
+            "pred_idx": st.session_state.pred_idx,
+            "pil_resized": st.session_state.pil_resized
+        })
+        if len(st.session_state.prediction_history) > 10:
+            st.session_state.prediction_history.pop(0)
+        for key in ["pred_class", "confidence", "probs", "raw_img_np", "input_tensor", "pred_idx", "pil_resized"]:
+            st.session_state.pop(key, None)
+        st.session_state.page = 1
+        st.rerun()
 
 # ✅ Preprocess image function
 def preprocess_image(img_file):
