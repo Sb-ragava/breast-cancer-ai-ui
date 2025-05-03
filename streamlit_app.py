@@ -84,7 +84,7 @@ def page_1():
             st.session_state.raw_img_np = raw_img_np
             st.session_state.input_tensor = input_tensor
             st.session_state.pred_idx = pred_idx
-            st.experimental_rerun()
+            page_2()
 
 # ✅ Page 2: Prediction Results
 def page_2():
@@ -171,14 +171,7 @@ def main():
     if 'pred_class' not in st.session_state:
         st.session_state.pred_class = None
 
-    page = st.sidebar.radio("Choose a page", ("Home", "Prediction Results"))
-
-    if page == "Home":
-        page_1()
-    elif page == "Prediction Results" and st.session_state.pred_class is not None:
-        page_2()
-    else:
-        st.write("Please upload an image to make a prediction.")
+    page_1()
 
 if __name__ == "__main__":
     main()
