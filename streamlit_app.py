@@ -84,7 +84,8 @@ def page_1():
             st.session_state.raw_img_np = raw_img_np
             st.session_state.input_tensor = input_tensor
             st.session_state.pred_idx = pred_idx
-            page_2()
+            st.session_state.page = 2
+            st.experimental_rerun()
 
 # ✅ Page 2: Prediction Results
 def page_2():
@@ -171,10 +172,14 @@ def preprocess_image(img_file):
 def main():
     st.set_page_config(page_title="Streamlit Multi-Page App")
 
-    if 'pred_class' not in st.session_state:
+    if 'page' not in st.session_state:
+        st.session_state.page = 1
         st.session_state.pred_class = None
 
-    page_1()
+    if st.session_state.page == 1:
+        page_1()
+    elif st.session_state.page == 2:
+        page_2()
 
 if __name__ == "__main__":
     main()
