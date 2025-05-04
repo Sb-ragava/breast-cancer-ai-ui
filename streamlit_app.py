@@ -166,10 +166,9 @@ def page_1():
 # ✅ Page 2: Prediction Results
 def page_2():
     st.title(f"Prediction Results: {st.session_state.pred_class}")
-
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
-    fig, axs = plt.subplots(1, 2, figsize=(16, 6))  # Increased the figure size for full window
+    fig, axs = plt.subplots(1, 2, figsize=(16, 6))
     sns.barplot(x=class_names, y=st.session_state.probs, hue=class_names, palette='coolwarm', legend=False, ax=axs[0])
     axs[0].set_title("Prediction Probabilities (Bar Chart)")
     axs[0].set_ylabel("Probability")
@@ -208,7 +207,7 @@ def page_2():
     heatmap = np.clip(heatmap, 0, 1)
 
     st.write("### Explainability Visualizations")
-    col1, col2, col3 = st.columns(3)  # Keep columns, but ensure images span the full width
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
     with col2:
@@ -239,20 +238,8 @@ def page_2():
         mime="image/png"
     )
 
+    # ✅ FIXED: Removed appending to prediction_history again
     if st.button("Back"):
-        if 'prediction_history' not in st.session_state:
-            st.session_state.prediction_history = []
-        st.session_state.prediction_history.append({
-            "pred_class": st.session_state.pred_class,
-            "confidence": st.session_state.confidence,
-            "probs": st.session_state.probs,
-            "raw_img_np": st.session_state.raw_img_np,
-            "input_tensor": st.session_state.input_tensor,
-            "pred_idx": st.session_state.pred_idx,
-            "pil_resized": st.session_state.pil_resized
-        })
-        if len(st.session_state.prediction_history) > 10:
-            st.session_state.prediction_history.pop(0)
         for key in ["pred_class", "confidence", "probs", "raw_img_np", "input_tensor", "pred_idx", "pil_resized"]:
             st.session_state.pop(key, None)
         st.session_state.page = 1
