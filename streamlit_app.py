@@ -90,7 +90,7 @@ def page_1():
     ✅ AI-based prediction  
     ✅ Visual region importance maps  
     ✅ A detailed case summary
-    """)
+    """, unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
     if uploaded_file:
@@ -164,8 +164,7 @@ def page_2():
 
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
-
+    fig, axs = plt.subplots(1, 2, figsize=(16, 6))  # Increased the figure size for full window
     sns.barplot(x=class_names, y=st.session_state.probs, hue=class_names, palette='coolwarm', legend=False, ax=axs[0])
     axs[0].set_title("Prediction Probabilities (Bar Chart)")
     axs[0].set_ylabel("Probability")
@@ -204,7 +203,7 @@ def page_2():
     heatmap = np.clip(heatmap, 0, 1)
 
     st.write("### Explainability Visualizations")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)  # Keep columns, but ensure images span the full width
     with col1:
         st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
     with col2:
