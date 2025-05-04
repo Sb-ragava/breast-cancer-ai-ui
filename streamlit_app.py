@@ -1,8 +1,4 @@
 import streamlit as st
-
-# ✅ Must be first Streamlit command
-st.set_page_config(page_title="OncoAid", layout="wide")
-
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -83,55 +79,110 @@ def preprocess_image(img_file):
     return tensor_img, raw_img_np, pil_img.resize((224, 224))
 
 # ✅ Page 1: Upload + Predict Unified
-
 def page_1():
-    st.markdown("<h1 style='text-align: center;'>OncoAid</h1>", unsafe_allow_html=True)
+    st.title("👋 Welcome to OncoAid")
     st.markdown("""
-    <div style='text-align: center;'>
-        <h4>Your AI Assistant for Breast Cancer Detection</h4>
-        <p>Upload an image to get predictions and visual explanations using state-of-the-art AI models.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    ## Your AI Assistant for Breast Cancer Detection and Explainability
 
-    st.write("")
-    uploaded_file = st.file_uploader("Upload an image (jpg/png/jpeg)...", type=["jpg", "png", "jpeg"])
+    OncoAid is an intelligent assistant designed to help detect breast cancer across multiple imaging modalities — Ultrasound, DDSM Mammography, and Histopathology. It uses state-of-the-art AI models to classify tumors and provides visual explanations like Grad-CAM++ and Integrated Gradients to support clinical decision-making.
 
+    **Upload an image to get started and receive:**
+    ✅ AI-based prediction  
+    ✅ Visual region importance maps  
+    ✅ A detailed case summary
+    """)
+
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
     if uploaded_file:
         st.session_state.uploaded_file = uploaded_file
-        input_tensor, raw_img_np, pil_resized = preprocess_image(uploaded_file)
-        st.image(pil_resized, caption="Uploaded Image", use_container_width=True)
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("Predict"):
-                with torch.no_grad():
-                    output = swin_model(input_tensor)
-                    probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
-                    pred_idx = int(np.argmax(probs))
-                    pred_class = class_names[pred_idx]
-                    confidence = probs[pred_idx]
+    if st.session_state.get("uploaded_file") is not None:
+        if st.button("Predict"):
+            input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
 
-                st.session_state.pred_class = pred_class
-                st.session_state.confidence = confidence
-                st.session_state.probs = probs
-                st.session_state.raw_img_np = raw_img_np
-                st.session_state.input_tensor = input_tensor
-                st.session_state.pred_idx = pred_idx
-                st.session_state.pil_resized = pil_resized
+            with torch.no_grad():
+                output = swin_model(input_tensor)
+                probs = torch.nn.functional.softmax(output, dim=1)[0].cpu().numpy()
+                pred_idx = int(np.argmax(probs))
+                pred_class = class_names[pred_idx]
+                confidence = probs[pred_idx]
 
-                st.session_state.page = 2
-                st.rerun()
-        with col2:
-            if st.button("Clear"):
-                st.session_state.clear()
-                st.rerun()
+            if 'prediction_history' not in st.session_state:
+                st.session_state.prediction_history = []
+
+            st.session_state.prediction_history.append({
+                'pred_class': pred_class,
+                'confidence': confidence,
+                'probs': probs,
+                'raw_img_np': raw_img_np,
+                'input_tensor': input_tensor,
+                'pred_idx': pred_idx,
+                'pil_resized': pil_resized
+            })
+
+            if len(st.session_state.prediction_history) > 10:
+                st.session_state.prediction_history.pop(0)
+
+            st.session_state.pred_class = pred_class
+            st.session_state.confidence = confidence
+            st.session_state.probs = probs
+            st.session_state.raw_img_np = raw_img_np
+            st.session_state.input_tensor = input_tensor
+            st.session_state.pred_idx = pred_idx
+            st.session_state.pil_resized = pil_resized
+            st.session_state.page = 2
+            st.rerun()
+
+    # Optional: Display history
+    if 'prediction_history' in st.session_state and st.session_state.prediction_history:
+        st.markdown("---")
+        st.subheader("Prediction History")
+        for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
+            st.markdown(f"**Prediction {len(st.session_state.prediction_history) - idx}:**")
+            st.write(f"- Class: {entry['pred_class']}")
+            st.write(f"- Confidence: {entry['confidence']*100:.2f}%")
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button(f"View {len(st.session_state.prediction_history) - idx}"):
+                    st.session_state.pred_class = entry['pred_class']
+                    st.session_state.confidence = entry['confidence']
+                    st.session_state.probs = entry['probs']
+                    st.session_state.raw_img_np = entry['raw_img_np']
+                    st.session_state.input_tensor = entry['input_tensor']
+                    st.session_state.pred_idx = entry['pred_idx']
+                    st.session_state.pil_resized = entry['pil_resized']
+                    st.session_state.page = 2
+                    st.rerun()
+            with col2:
+                if st.button(f"Delete {len(st.session_state.prediction_history) - idx}"):
+                    st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
+                    st.rerun()
 
 # ✅ Page 2: Prediction Results
 def page_2():
-    st.markdown(f"<h2>Prediction: {st.session_state.pred_class} ({st.session_state.confidence*100:.2f}%)</h2>", unsafe_allow_html=True)
+    st.title(f"Prediction Results: {st.session_state.pred_class}")
+
+    st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
+
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+
+    sns.barplot(x=class_names, y=st.session_state.probs, hue=class_names, palette='coolwarm', legend=False, ax=axs[0])
+    axs[0].set_title("Prediction Probabilities (Bar Chart)")
+    axs[0].set_ylabel("Probability")
+
+    axs[1].pie(
+        st.session_state.probs,
+        labels=class_names,
+        autopct='%1.1f%%',
+        startangle=90,
+        colors=sns.color_palette('coolwarm')
+    )
+    axs[1].set_title("Prediction Confidence (Pie Chart)")
+
+    st.pyplot(fig)
 
     target_layers = [resnet_model.model.layer4[-1]]
-    cam = GradCAMPlusPlus(model=resnet_model.model, target_layers=target_layers, use_cuda=False)
+    cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
     grayscale_cam = cam(input_tensor=st.session_state.input_tensor, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
     visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
 
@@ -152,6 +203,7 @@ def page_2():
     heatmap = np.transpose(heatmap, (1, 2, 0))
     heatmap = np.clip(heatmap, 0, 1)
 
+    st.write("### Explainability Visualizations")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
@@ -160,29 +212,55 @@ def page_2():
     with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
+    st.write("### Prediction Summary:")
+    st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
+    st.write(f"2. Confidence of the prediction: {st.session_state.confidence*100:.2f}%")
+    st.write(f"3. Key regions of the image were highlighted using Grad-CAM++.")
+    st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction.")
+
     gradcam_pil = Image.fromarray(visualization)
     ig_pil = Image.fromarray((heatmap.squeeze() * 255).astype(np.uint8))
 
-    col4, col5 = st.columns([1, 1])
-    with col4:
-        st.download_button("Download Grad-CAM++", image_to_bytes(gradcam_pil), "grad_cam.png", mime="image/png")
-    with col5:
-        st.download_button("Download IG", image_to_bytes(ig_pil), "integrated_gradients.png", mime="image/png")
+    st.download_button(
+        label="Download Grad-CAM++ Image",
+        data=image_to_bytes(gradcam_pil),
+        file_name="grad_cam_image.png",
+        mime="image/png"
+    )
 
-    st.write("### Summary:")
-    st.write(f"- **Prediction:** {st.session_state.pred_class}")
-    st.write(f"- **Confidence:** {st.session_state.confidence*100:.2f}%")
-    st.write("- Grad-CAM++ highlights important regions in the image.")
-    st.write("- Integrated Gradients shows which pixels most contributed to the prediction.")
+    st.download_button(
+        label="Download IG Image",
+        data=image_to_bytes(ig_pil),
+        file_name="ig_image.png",
+        mime="image/png"
+    )
 
-    if st.button("← Back"):
+    if st.button("Back"):
+        if 'prediction_history' not in st.session_state:
+            st.session_state.prediction_history = []
+        st.session_state.prediction_history.append({
+            "pred_class": st.session_state.pred_class,
+            "confidence": st.session_state.confidence,
+            "probs": st.session_state.probs,
+            "raw_img_np": st.session_state.raw_img_np,
+            "input_tensor": st.session_state.input_tensor,
+            "pred_idx": st.session_state.pred_idx,
+            "pil_resized": st.session_state.pil_resized
+        })
+        if len(st.session_state.prediction_history) > 10:
+            st.session_state.prediction_history.pop(0)
+        for key in ["pred_class", "confidence", "probs", "raw_img_np", "input_tensor", "pred_idx", "pil_resized"]:
+            st.session_state.pop(key, None)
         st.session_state.page = 1
         st.rerun()
 
 # ✅ Main function to control pages
 def main():
+    st.set_page_config(page_title="Streamlit Multi-Page App")
+
     if 'page' not in st.session_state:
         st.session_state.page = 1
+        st.session_state.pred_class = None
 
     if st.session_state.page == 1:
         page_1()
