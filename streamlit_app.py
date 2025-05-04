@@ -96,8 +96,16 @@ def page_1():
     if uploaded_file:
         st.session_state.uploaded_file = uploaded_file
 
+    # Check if file is uploaded and button clicked
     if st.session_state.get("uploaded_file") is not None:
         if st.button("Predict"):
+            # Ensure history is not getting duplicated
+            if 'prediction_history' not in st.session_state:
+                st.session_state.prediction_history = []
+
+            # Clear history before making a new prediction
+            st.session_state.prediction_history.clear()
+
             input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
 
             with torch.no_grad():
@@ -106,9 +114,6 @@ def page_1():
                 pred_idx = int(np.argmax(probs))
                 pred_class = class_names[pred_idx]
                 confidence = probs[pred_idx]
-
-            if 'prediction_history' not in st.session_state:
-                st.session_state.prediction_history = []
 
             st.session_state.prediction_history.append({
                 'pred_class': pred_class,
