@@ -168,7 +168,9 @@ def page_2():
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
-    sns.barplot(x=class_names, y=st.session_state.probs, hue=class_names, palette='coolwarm', legend=False, ax=axs[0])
+    colors = sns.color_palette('coolwarm', len(class_names))
+
+    sns.barplot(x=class_names, y=st.session_state.probs, palette=colors, ax=axs[0])
     axs[0].set_title("Prediction Probabilities (Bar Chart)")
     axs[0].set_ylabel("Probability")
 
@@ -177,14 +179,35 @@ def page_2():
         labels=class_names,
         autopct='%1.1f%%',
         startangle=90,
-        colors=sns.color_palette('coolwarm')
+        colors=colors
     )
     axs[1].set_title("Prediction Confidence (Pie Chart)")
 
     st.pyplot(fig)
 
-    resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
+    st.markdown("""
+### 🔍 Understanding the Prediction Distribution
 
+After the image is analyzed by the AI model, the prediction isn't just a single label — it's a distribution of confidence across all possible classes: **Benign**, **Malignant**, and **Normal**. This helps provide transparency into how confident the model is in its decision.
+
+#### 🟦 Bar Chart:
+- The bar chart shows the exact **probability scores** for each class as predicted by the model.
+- **Taller bars** indicate higher confidence.
+- This is useful for comparing how close or far apart the predictions are.
+
+#### 🕪 Pie Chart:
+- The pie chart provides a **visual proportion** of the prediction confidence for each class.
+- It helps quickly understand which class the model is leaning towards.
+- The class with the **largest slice** is the model's top prediction.
+
+#### 🎨 Chart Color Legend:
+- Each class (Benign, Malignant, Normal) has a **consistent color** across the bar and pie charts.
+- These colors help visually connect the data in both chart types.
+
+These visualizations give you a better sense of the model's certainty, and whether the prediction is strong or borderline — which can guide further medical review.
+    """)
+
+    resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
     target_layers = [resnet_model.model.layer4[-1]]
     cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
     grayscale_cam = cam(input_tensor=resnet_input, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
@@ -193,10 +216,7 @@ def page_2():
     ig = IntegratedGradients(resnet_model)
     resnet_input.requires_grad_()
     baseline = torch.zeros_like(resnet_input)
-    attributions_ig = ig.attribute(inputs=resnet_input,
-                                   baselines=baseline,
-                                   target=st.session_state.pred_idx,
-                                   n_steps=50)
+    attributions_ig = ig.attribute(inputs=resnet_input, baselines=baseline, target=st.session_state.pred_idx, n_steps=50)
 
     attr_ig_np = attributions_ig.squeeze().detach().numpy()
     input_np = resnet_input.squeeze().permute(1, 2, 0).detach().numpy()
@@ -257,4 +277,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
