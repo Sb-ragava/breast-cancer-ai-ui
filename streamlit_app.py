@@ -91,16 +91,17 @@ def preprocess_for_resnet(pil_img):
 
 # ✅ Page 1: Upload + Predict Unified
 def page_1():
-    st.title("Welcome to OncoAid")
-    st.subheader("Your AI Assistant for Breast Cancer Detection and Explainability")
+    st.title("👋 Welcome to OncoAid")
+    st.markdown("""
+    ## Your AI Assistant for Breast Cancer Detection and Explainability
 
-    st.write("OncoAid is an intelligent assistant designed to help detect breast cancer across multiple imaging modalities — Ultrasound, DDSM Mammography, and Histopathology.")
-    st.write("It uses state-of-the-art AI models to classify tumors and provides visual explanations like Grad-CAM++ and Integrated Gradients to support clinical decision-making.")
+    OncoAid is an intelligent assistant designed to help detect breast cancer across multiple imaging modalities — Ultrasound, DDSM Mammography, and Histopathology. It uses state-of-the-art AI models to classify tumors and provides visual explanations like Grad-CAM++ and Integrated Gradients to support clinical decision-making.
 
-    st.write("**Upload an image to get started and receive:**")
-    st.write("- AI-based prediction")
-    st.write("- Visual region importance maps")
-    st.write("- A detailed case summary")
+    **Upload an image to get started and receive:**
+    ✅ AI-based prediction  
+    ✅ Visual region importance maps  
+    ✅ A detailed case summary
+    """, unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
     if uploaded_file:
@@ -206,7 +207,7 @@ def page_2():
     heatmap = np.sum(attr_ig_np, axis=0)
     heatmap = np.clip(heatmap, 0, 1)
 
-    st.subheader("Explainability Visualizations")
+    st.write("### Explainability Visualizations")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
@@ -215,11 +216,11 @@ def page_2():
     with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
-    st.subheader("Prediction Summary")
+    st.write("### Prediction Summary: ")
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
     st.write(f"2. Confidence of the prediction: {st.session_state.confidence*100:.2f}%")
-    st.write(f"3. Key regions of the image were highlighted using Grad-CAM++.")
-    st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction.")
+    st.write(f"3. Key regions of the image were highlighted using Grad-CAM++. ")
+    st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction. ")
 
     gradcam_pil = Image.fromarray(visualization)
     ig_pil = Image.fromarray((heatmap * 255).astype(np.uint8), mode="L")
