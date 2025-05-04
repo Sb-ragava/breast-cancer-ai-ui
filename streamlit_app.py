@@ -111,7 +111,6 @@ def page_1():
         if st.button("Predict"):
             if 'prediction_history' not in st.session_state:
                 st.session_state.prediction_history = []
-            st.session_state.prediction_history.clear()
 
             input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
 
@@ -205,8 +204,7 @@ def page_2():
     input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
     input_np = np.clip(input_np, 0, 1)
 
-    heatmap = np.sum(attr_ig_np, axis=0, keepdims=True)
-    heatmap = np.transpose(heatmap, (1, 2, 0))
+    heatmap = np.sum(attr_ig_np, axis=0)
     heatmap = np.clip(heatmap, 0, 1)
 
     st.write("### Explainability Visualizations")
@@ -225,7 +223,7 @@ def page_2():
     st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction.")
 
     gradcam_pil = Image.fromarray(visualization)
-    ig_pil = Image.fromarray((heatmap.squeeze() * 255).astype(np.uint8))
+    ig_pil = Image.fromarray((heatmap * 255).astype(np.uint8), mode="L")
 
     st.download_button(
         label="Download Grad-CAM++ Image",
@@ -242,21 +240,6 @@ def page_2():
     )
 
     if st.button("Back"):
-        if 'prediction_history' not in st.session_state:
-            st.session_state.prediction_history = []
-        st.session_state.prediction_history.append({
-            "pred_class": st.session_state.pred_class,
-            "confidence": st.session_state.confidence,
-            "probs": st.session_state.probs,
-            "raw_img_np": st.session_state.raw_img_np,
-            "input_tensor": st.session_state.input_tensor,
-            "pred_idx": st.session_state.pred_idx,
-            "pil_resized": st.session_state.pil_resized
-        })
-        if len(st.session_state.prediction_history) > 10:
-            st.session_state.prediction_history.pop(0)
-        for key in ["pred_class", "confidence", "probs", "raw_img_np", "input_tensor", "pred_idx", "pil_resized"]:
-            st.session_state.pop(key, None)
         st.session_state.page = 1
         st.rerun()
 
