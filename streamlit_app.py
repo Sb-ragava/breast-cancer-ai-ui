@@ -89,11 +89,38 @@ def preprocess_for_resnet(pil_img):
     tensor_img = transform_tensor_resnet(pil_img).unsqueeze(0)
     return tensor_img
 
+# ✅ Custom CSS for full width and left alignment
+st.markdown("""
+    <style>
+    .block-container {
+        max-width: 100% !important;
+        padding-left: 0px;
+        padding-right: 0px;
+        text-align: left;
+    }
+    .css-18e3th9 {
+        display: block !important;
+        text-align: left !important;
+    }
+    .css-1v3fvcr {
+        text-align: left !important;
+    }
+    .stButton>button {
+        text-align: left !important;
+    }
+    .stDownloadButton>button {
+        text-align: left !important;
+    }
+    .stMarkdown {
+        text-align: left !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # ✅ Page 1: Upload + Predict Unified
 def page_1():
-    st.markdown("<h1 style='text-align: left;'>👋 Welcome to OncoAid</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>👋 Welcome to OncoAid</h1>", unsafe_allow_html=True)
     st.markdown("""
-    <div style="text-align: left;">
     ## Your AI Assistant for Breast Cancer Detection and Explainability
 
     OncoAid is an intelligent assistant designed to help detect breast cancer across multiple imaging modalities — Ultrasound, DDSM Mammography, and Histopathology. It uses state-of-the-art AI models to classify tumors and provides visual explanations like Grad-CAM++ and Integrated Gradients to support clinical decision-making.
@@ -102,7 +129,6 @@ def page_1():
     ✅ AI-based prediction  
     ✅ Visual region importance maps  
     ✅ A detailed case summary
-    </div>
     """, unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
@@ -167,7 +193,7 @@ def page_1():
 
 # ✅ Page 2: Prediction Results
 def page_2():
-    st.markdown("<h1 style='text-align: left;'>Prediction Results: {}</h1>".format(st.session_state.pred_class), unsafe_allow_html=True)
+    st.markdown("<h1>Prediction Results: {}</h1>".format(st.session_state.pred_class), unsafe_allow_html=True)
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
@@ -209,7 +235,7 @@ def page_2():
     heatmap = np.sum(attr_ig_np, axis=0)
     heatmap = np.clip(heatmap, 0, 1)
 
-    st.write("<h3 style='text-align: left;'>Explainability Visualizations</h3>", unsafe_allow_html=True)
+    st.write("<h3>Explainability Visualizations</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
@@ -218,7 +244,7 @@ def page_2():
     with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
-    st.write("<h3 style='text-align: left;'>Prediction Summary: </h3>", unsafe_allow_html=True)
+    st.write("<h3>Prediction Summary: </h3>", unsafe_allow_html=True)
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
     st.write(f"2. Confidence of the prediction: {st.session_state.confidence*100:.2f}%")
     st.write(f"3. Key regions of the image were highlighted using Grad-CAM++. ")
