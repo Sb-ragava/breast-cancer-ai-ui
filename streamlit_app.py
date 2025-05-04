@@ -178,7 +178,7 @@ def page_2():
 
     # Grad-CAM++
     target_layers = [resnet_model.model.layer4[-1]]
-    cam = GradCAMPlusPlus(model=resnet_model.model, target_layers=target_layers, use_cuda=False)
+    cam = GradCAMPlusPlus(model=resnet_model.model, target_layers=target_layers)
     grayscale_cam = cam(input_tensor=st.session_state.input_tensor, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
     visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
     cam_img = Image.fromarray(visualization)
