@@ -91,8 +91,9 @@ def preprocess_for_resnet(pil_img):
 
 # ✅ Page 1: Upload + Predict Unified
 def page_1():
-    st.title("👋 Welcome to OncoAid")
+    st.markdown("<h1 style='text-align: left;'>👋 Welcome to OncoAid</h1>", unsafe_allow_html=True)
     st.markdown("""
+    <div style="text-align: left;">
     ## Your AI Assistant for Breast Cancer Detection and Explainability
 
     OncoAid is an intelligent assistant designed to help detect breast cancer across multiple imaging modalities — Ultrasound, DDSM Mammography, and Histopathology. It uses state-of-the-art AI models to classify tumors and provides visual explanations like Grad-CAM++ and Integrated Gradients to support clinical decision-making.
@@ -101,6 +102,7 @@ def page_1():
     ✅ AI-based prediction  
     ✅ Visual region importance maps  
     ✅ A detailed case summary
+    </div>
     """, unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
@@ -145,7 +147,7 @@ def page_1():
             st.rerun()
 
     if 'prediction_history' in st.session_state and st.session_state.prediction_history:
-        st.markdown("---")
+        st.markdown("<hr>", unsafe_allow_html=True)
         st.subheader("Prediction History")
         for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
             st.markdown(f"**Prediction {len(st.session_state.prediction_history) - idx}:**")
@@ -165,7 +167,7 @@ def page_1():
 
 # ✅ Page 2: Prediction Results
 def page_2():
-    st.title(f"Prediction Results: {st.session_state.pred_class}")
+    st.markdown("<h1 style='text-align: left;'>Prediction Results: {}</h1>".format(st.session_state.pred_class), unsafe_allow_html=True)
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
@@ -207,7 +209,7 @@ def page_2():
     heatmap = np.sum(attr_ig_np, axis=0)
     heatmap = np.clip(heatmap, 0, 1)
 
-    st.write("### Explainability Visualizations")
+    st.write("<h3 style='text-align: left;'>Explainability Visualizations</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
@@ -216,7 +218,7 @@ def page_2():
     with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
-    st.write("### Prediction Summary: ")
+    st.write("<h3 style='text-align: left;'>Prediction Summary: </h3>", unsafe_allow_html=True)
     st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
     st.write(f"2. Confidence of the prediction: {st.session_state.confidence*100:.2f}%")
     st.write(f"3. Key regions of the image were highlighted using Grad-CAM++. ")
