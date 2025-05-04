@@ -78,6 +78,17 @@ def preprocess_image(img_file):
     raw_img_np = np.array(pil_img.resize((224, 224))).astype(np.float32) / 255.0
     return tensor_img, raw_img_np, pil_img.resize((224, 224))
 
+# ✅ Preprocess for ResNet18 (Grad-CAM and IG)
+def preprocess_for_resnet(pil_img):
+    transform_tensor_resnet = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+    tensor_img = transform_tensor_resnet(pil_img).unsqueeze(0)
+    return tensor_img
+
 # ✅ Page 1: Upload + Predict Unified
 def page_1():
     st.title("👋 Welcome to OncoAid")
@@ -96,14 +107,10 @@ def page_1():
     if uploaded_file:
         st.session_state.uploaded_file = uploaded_file
 
-    # Check if file is uploaded and button clicked
     if st.session_state.get("uploaded_file") is not None:
         if st.button("Predict"):
-            # Ensure history is not getting duplicated
             if 'prediction_history' not in st.session_state:
                 st.session_state.prediction_history = []
-
-            # Clear history before making a new prediction
             st.session_state.prediction_history.clear()
 
             input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
@@ -138,7 +145,6 @@ def page_1():
             st.session_state.page = 2
             st.rerun()
 
-    # Optional: Display history
     if 'prediction_history' in st.session_state and st.session_state.prediction_history:
         st.markdown("---")
         st.subheader("Prediction History")
@@ -149,13 +155,8 @@ def page_1():
             col1, col2 = st.columns([1, 1])
             with col1:
                 if st.button(f"View {len(st.session_state.prediction_history) - idx}"):
-                    st.session_state.pred_class = entry['pred_class']
-                    st.session_state.confidence = entry['confidence']
-                    st.session_state.probs = entry['probs']
-                    st.session_state.raw_img_np = entry['raw_img_np']
-                    st.session_state.input_tensor = entry['input_tensor']
-                    st.session_state.pred_idx = entry['pred_idx']
-                    st.session_state.pil_resized = entry['pil_resized']
+                    for key in entry:
+                        st.session_state[key] = entry[key]
                     st.session_state.page = 2
                     st.rerun()
             with col2:
@@ -184,21 +185,23 @@ def page_2():
 
     st.pyplot(fig)
 
+    resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
+
     target_layers = [resnet_model.model.layer4[-1]]
     cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
-    grayscale_cam = cam(input_tensor=st.session_state.input_tensor, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
+    grayscale_cam = cam(input_tensor=resnet_input, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
     visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
 
     ig = IntegratedGradients(resnet_model)
-    st.session_state.input_tensor.requires_grad_()
-    baseline = torch.zeros_like(st.session_state.input_tensor)
-    attributions_ig = ig.attribute(inputs=st.session_state.input_tensor,
+    resnet_input.requires_grad_()
+    baseline = torch.zeros_like(resnet_input)
+    attributions_ig = ig.attribute(inputs=resnet_input,
                                    baselines=baseline,
                                    target=st.session_state.pred_idx,
                                    n_steps=50)
 
     attr_ig_np = attributions_ig.squeeze().detach().numpy()
-    input_np = st.session_state.input_tensor.squeeze().permute(1, 2, 0).detach().numpy()
+    input_np = resnet_input.squeeze().permute(1, 2, 0).detach().numpy()
     input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
     input_np = np.clip(input_np, 0, 1)
 
@@ -238,8 +241,20 @@ def page_2():
         mime="image/png"
     )
 
-    # ✅ FIXED: Removed appending to prediction_history again
     if st.button("Back"):
+        if 'prediction_history' not in st.session_state:
+            st.session_state.prediction_history = []
+        st.session_state.prediction_history.append({
+            "pred_class": st.session_state.pred_class,
+            "confidence": st.session_state.confidence,
+            "probs": st.session_state.probs,
+            "raw_img_np": st.session_state.raw_img_np,
+            "input_tensor": st.session_state.input_tensor,
+            "pred_idx": st.session_state.pred_idx,
+            "pil_resized": st.session_state.pil_resized
+        })
+        if len(st.session_state.prediction_history) > 10:
+            st.session_state.prediction_history.pop(0)
         for key in ["pred_class", "confidence", "probs", "raw_img_np", "input_tensor", "pred_idx", "pil_resized"]:
             st.session_state.pop(key, None)
         st.session_state.page = 1
