@@ -12,3 +12,4 @@ gdown
 opencv-python-headless
 timm
 git+https://github.com/jacobgil/pytorch-grad-cam.git
+fpdf
