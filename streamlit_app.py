@@ -162,28 +162,32 @@ def page_1():
                     st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
                     st.rerun()
 
-# ✅ Page 2: Prediction Results
+# ✅ Page 2: Prediction Results (Split Layout)
 def page_2():
     st.title(f"Prediction Results: {st.session_state.pred_class}")
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
-    fig, axs = plt.subplots(1, 2, figsize=(16, 6))
-    colors = sns.color_palette('coolwarm', len(class_names))
+    # First section: Bar and Pie Charts
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        colors = sns.color_palette('coolwarm', len(class_names))
+        sns.barplot(x=class_names, y=st.session_state.probs, palette=colors, ax=ax)
+        ax.set_title("Prediction Probabilities (Bar Chart)")
+        ax.set_ylabel("Probability")
+        st.pyplot(fig)
 
-    sns.barplot(x=class_names, y=st.session_state.probs, palette=colors, ax=axs[0])
-    axs[0].set_title("Prediction Probabilities (Bar Chart)")
-    axs[0].set_ylabel("Probability")
-
-    axs[1].pie(
-        st.session_state.probs,
-        labels=class_names,
-        autopct='%1.1f%%',
-        startangle=90,
-        colors=colors
-    )
-    axs[1].set_title("Prediction Confidence (Pie Chart)")
-
-    st.pyplot(fig)
+    with col2:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.pie(
+            st.session_state.probs,
+            labels=class_names,
+            autopct='%1.1f%%',
+            startangle=90,
+            colors=colors
+        )
+        ax.set_title("Prediction Confidence (Pie Chart)")
+        st.pyplot(fig)
 
     st.markdown("""
 ### 🔍 Understanding the Prediction Distribution
@@ -199,40 +203,32 @@ After the image is analyzed by the AI model, the prediction isn't just a single 
 - The pie chart provides a **visual proportion** of the prediction confidence for each class.
 - It helps quickly understand which class the model is leaning towards.
 - The class with the **largest slice** is the model's top prediction.
-
-#### 🎨 Chart Color Legend:
-- Each class (Benign, Malignant, Normal) has a **consistent color** across the bar and pie charts.
-- These colors help visually connect the data in both chart types.
-
-These visualizations give you a better sense of the model's certainty, and whether the prediction is strong or borderline — which can guide further medical review.
     """)
 
-    resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
-    target_layers = [resnet_model.model.layer4[-1]]
-    cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
-    grayscale_cam = cam(input_tensor=resnet_input, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
-    visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
-
-    ig = IntegratedGradients(resnet_model)
-    resnet_input.requires_grad_()
-    baseline = torch.zeros_like(resnet_input)
-    attributions_ig = ig.attribute(inputs=resnet_input, baselines=baseline, target=st.session_state.pred_idx, n_steps=50)
-
-    attr_ig_np = attributions_ig.squeeze().detach().numpy()
-    input_np = resnet_input.squeeze().permute(1, 2, 0).detach().numpy()
-    input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
-    input_np = np.clip(input_np, 0, 1)
-
-    heatmap = np.sum(attr_ig_np, axis=0)
-    heatmap = np.clip(heatmap, 0, 1)
-
-    st.subheader("Explainability Visualizations")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
-    with col2:
-        st.image(visualization, caption="Grad-CAM++", use_container_width=True)
+    # Second section: Grad-CAM++ and Integrated Gradients
+    col3, col4 = st.columns([1, 1])
     with col3:
+        resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
+        target_layers = [resnet_model.model.layer4[-1]]
+        cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
+        grayscale_cam = cam(input_tensor=resnet_input, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
+        visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
+        st.image(visualization, caption="Grad-CAM++", use_container_width=True)
+
+    with col4:
+        ig = IntegratedGradients(resnet_model)
+        resnet_input.requires_grad_()
+        baseline = torch.zeros_like(resnet_input)
+        attributions_ig = ig.attribute(inputs=resnet_input, baselines=baseline, target=st.session_state.pred_idx, n_steps=50)
+
+        attr_ig_np = attributions_ig.squeeze().detach().numpy()
+        input_np = resnet_input.squeeze().permute(1, 2, 0).detach().numpy()
+        input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
+        input_np = np.clip(input_np, 0, 1)
+
+        heatmap = np.sum(attr_ig_np, axis=0)
+        heatmap = np.clip(heatmap, 0, 1)
+
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
     st.markdown("""
@@ -247,16 +243,6 @@ This image uses a heatmap overlay to show where the AI model focused when making
 
 ### 🎯 Integrated Gradients Explanation
 This image reveals which individual pixels in the scan had the most influence on the AI's prediction.
-
-🌟 **Brighter dots or regions** show pixels that strongly supported the model's decision — they contain patterns or textures the model recognized as important.
-
-⚫ **Darker or less visible areas** contributed less or not at all to the prediction.
-
-This pixel-level attribution helps highlight fine-grained features like tissue edges, masses, or subtle abnormalities.
-
-Unlike Grad-CAM++, which gives a broad area of focus, Integrated Gradients dives deeper — it shows the tiny details the model noticed and used as part of its reasoning.
-
-This fine-resolution view provides deeper insight into how the AI sees the image — helping radiologists and clinicians validate whether the highlighted features truly matter.
     """)
 
     gradcam_pil = Image.fromarray(visualization)
