@@ -235,11 +235,29 @@ These visualizations give you a better sense of the model's certainty, and wheth
     with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
-    st.subheader("Prediction Summary")
-    st.write(f"1. The model predicts that this image belongs to the '{st.session_state.pred_class}' class.")
-    st.write(f"2. Confidence of the prediction: {st.session_state.confidence*100:.2f}%")
-    st.write(f"3. Key regions of the image were highlighted using Grad-CAM++.")
-    st.write(f"4. Integrated Gradients shows which pixels contributed most to the prediction.")
+    st.markdown("""
+### 🧠 Grad-CAM++ Explanation (with Color Legend)
+This image uses a heatmap overlay to show where the AI model focused when making its decision:
+
+🔴 **Red/Yellow Areas**: These are the most influential regions — they had a strong impact on the AI's prediction. Think of them as the "attention hotspots" the model looked at while deciding whether the case is Benign, Malignant, or Normal.
+
+🟠 **Orange Zones**: These had a moderate influence — the model considered them, but they were not the primary decision drivers.
+
+🔵 **Blue/Cooler Areas**: These parts of the image were less relevant to the model's decision — they contributed very little to the classification result.
+
+### 🎯 Integrated Gradients Explanation
+This image reveals which individual pixels in the scan had the most influence on the AI's prediction.
+
+🌟 **Brighter dots or regions** show pixels that strongly supported the model's decision — they contain patterns or textures the model recognized as important.
+
+⚫ **Darker or less visible areas** contributed less or not at all to the prediction.
+
+This pixel-level attribution helps highlight fine-grained features like tissue edges, masses, or subtle abnormalities.
+
+Unlike Grad-CAM++, which gives a broad area of focus, Integrated Gradients dives deeper — it shows the tiny details the model noticed and used as part of its reasoning.
+
+This fine-resolution view provides deeper insight into how the AI sees the image — helping radiologists and clinicians validate whether the highlighted features truly matter.
+    """)
 
     gradcam_pil = Image.fromarray(visualization)
     ig_pil = Image.fromarray((heatmap * 255).astype(np.uint8), mode="L")
