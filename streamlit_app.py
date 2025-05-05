@@ -90,27 +90,6 @@ def preprocess_for_resnet(pil_img):
     tensor_img = transform_tensor_resnet(pil_img).unsqueeze(0)
     return tensor_img
 
-# ✅ Custom CSS for left alignment
-st.markdown("""
-    <style>
-        .css-1kyxreq { 
-            text-align: left !important;
-        }
-        .css-1v3fvcr {
-            justify-content: flex-start !important;
-        }
-        .stButton>button {
-            text-align: left;
-        }
-        .stMarkdown {
-            text-align: left !important;
-        }
-        .stFileUploader {
-            text-align: left !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 # ✅ Page 1: Upload + Predict Unified
 def page_1():
     st.title("Welcome to OncoAid")
@@ -130,20 +109,9 @@ def page_1():
 
     if st.session_state.get("uploaded_file") is not None:
         if st.button("Predict"):
-            # Clear previous prediction state to avoid corruption
-            st.session_state.pred_class = None
-            st.session_state.confidence = None
-            st.session_state.probs = None
-            st.session_state.raw_img_np = None
-            st.session_state.input_tensor = None
-            st.session_state.pred_idx = None
-            st.session_state.pil_resized = None
+            # Reset the session state for each new prediction
+            st.session_state.clear()  # This clears previous predictions and variables
 
-            # Reset the prediction history if necessary
-            if 'prediction_history' not in st.session_state:
-                st.session_state.prediction_history = []
-
-            # Preprocess and get prediction
             input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
 
             with torch.no_grad():
@@ -153,21 +121,7 @@ def page_1():
                 pred_class = class_names[pred_idx]
                 confidence = probs[pred_idx]
 
-            # Store prediction history
-            st.session_state.prediction_history.append({
-                'pred_class': pred_class,
-                'confidence': confidence,
-                'probs': probs,
-                'raw_img_np': raw_img_np,
-                'input_tensor': input_tensor,
-                'pred_idx': pred_idx,
-                'pil_resized': pil_resized
-            })
-
-            if len(st.session_state.prediction_history) > 10:
-                st.session_state.prediction_history.pop(0)
-
-            # Set state for display
+            # Save the new prediction data
             st.session_state.pred_class = pred_class
             st.session_state.confidence = confidence
             st.session_state.probs = probs
@@ -188,14 +142,12 @@ def page_1():
             col1, col2 = st.columns([1, 1])
             with col1:
                 if st.button(f"View {len(st.session_state.prediction_history) - idx}"):
-
                     for key in entry:
                         st.session_state[key] = entry[key]
                     st.session_state.page = 2
                     st.rerun()
             with col2:
                 if st.button(f"Delete {len(st.session_state.prediction_history) - idx}"):
-
                     st.session_state.prediction_history.pop(len(st.session_state.prediction_history) - idx - 1)
                     st.rerun()
 
@@ -204,40 +156,23 @@ def page_2():
     st.title(f"Prediction Results: {st.session_state.pred_class}")
     st.write(f"Confidence: {st.session_state.confidence*100:.2f}%")
 
-    # Visualization of Grad-CAM++ (Example)
-    cam = GradCAMPlusPlus(model=resnet_model, target_layers=[resnet_model.model.layer4[-1]])
-    grayscale_cam = cam(input_tensor=st.session_state.input_tensor)[0, :]
-    cam_image = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
-    
-    # Integrated Gradients Visualization
-    ig = IntegratedGradients(resnet_model)
-    attribution = ig.attribute(st.session_state.input_tensor, target=st.session_state.pred_idx)
-    attribution = attribution.squeeze().cpu().detach().numpy()
-    
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
+    colors = sns.color_palette('coolwarm', len(class_names))
 
-    axs[0].imshow(cam_image)
-    axs[0].set_title("Grad-CAM++ Visualization")
-    
-    axs[1].imshow(attribution, cmap="hot")
-    axs[1].set_title("Integrated Gradients")
-    
+    sns.barplot(x=class_names, y=st.session_state.probs, palette=colors, ax=axs[0])
+    axs[0].set_title("Prediction Probabilities (Bar Chart)")
+    axs[0].set_ylabel("Probability")
+
+    axs[1].pie(
+        st.session_state.probs,
+        labels=class_names,
+        autopct='%1.1f%%',
+        startangle=90,
+        colors=colors
+    )
+    axs[1].set_title("Prediction Confidence (Pie Chart)")
+
     st.pyplot(fig)
-
-    st.markdown(""" 
-### 🔍 Explanation of Grad-CAM++ and Integrated Gradients
-
-#### Grad-CAM++:
-- **Grad-CAM++** is a visualization technique that helps us understand which parts of the image are most important in making a decision.
-- The highlighted areas in the image are where the model paid the most attention while making the prediction.
-- In our case, areas showing **higher activation** help in determining if a tumor is benign or malignant.
-- This technique enhances the **original Grad-CAM** method by providing more accurate localization in complex image scenarios.
-
-#### Integrated Gradients (IG):
-- **Integrated Gradients** (IG) is another technique for visualizing model decisions.
-- It attributes the importance of each pixel in the image to the model's output by integrating the gradients of the output with respect to the input image.
-- The **hot** regions in the IG visualization indicate pixels that contributed most to the prediction, helping us understand the **key features** the model is focusing on.
-    """)
 
     st.markdown(""" 
 ### 🔍 Understanding the Prediction Distribution
@@ -254,11 +189,88 @@ After the image is analyzed by the AI model, the prediction isn't just a single 
 - The class with the **largest slice** is the model's top prediction.
     """)
 
-if __name__ == "__main__":
-    if 'page' not in st.session_state:
-        st.session_state.page = 1
+    resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
+    target_layers = [resnet_model.model.layer4[-1]]
+    cam = GradCAMPlusPlus(model=resnet_model, target_layers=target_layers)
+    grayscale_cam = cam(input_tensor=resnet_input, targets=[ClassifierOutputTarget(st.session_state.pred_idx)])[0]
+    visualization = show_cam_on_image(st.session_state.raw_img_np, grayscale_cam, use_rgb=True)
 
+    ig = IntegratedGradients(resnet_model)
+    resnet_input.requires_grad_()
+    baseline = torch.zeros_like(resnet_input)
+    attributions_ig = ig.attribute(inputs=resnet_input, baselines=baseline, target=st.session_state.pred_idx, n_steps=50)
+
+    attr_ig_np = attributions_ig.squeeze().detach().numpy()
+    input_np = resnet_input.squeeze().permute(1, 2, 0).detach().numpy()
+    input_np = (input_np * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
+    input_np = np.clip(input_np, 0, 1)
+
+    heatmap = np.sum(attr_ig_np, axis=0)
+    heatmap = np.clip(heatmap, 0, 1)
+
+    st.subheader("Explainability Visualizations")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.image(st.session_state.pil_resized, caption="Original Image", use_container_width=True)
+    with col2:
+        st.image(visualization, caption="Grad-CAM++", use_container_width=True)
+    with col3:
+        st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
+
+    st.markdown(""" 
+### 🧠 Grad-CAM++ Explanation (with Color Legend)
+This image uses a heatmap overlay to show where the AI model focused when making its decision.
+
+🔴 **Red/Yellow Areas**: These are the most influential regions — they had a strong impact on the prediction.
+
+🟢 **Blue Areas**: These regions were considered less important during classification.
+
+#### Integrated Gradients (IG) Explanation
+The **Integrated Gradients** method assigns importance scores to each pixel in the image, based on how much it contributes to the final prediction.
+
+- 🔴 **Red Areas**: Areas with the highest influence on the final decision.
+- 🟢 **Blue Areas**: Less influential regions.
+
+This provides additional transparency into the model’s reasoning by highlighting significant regions for the final decision.
+    """)
+
+    # ✅ Export PDF
+    if st.button("Export as PDF"):
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        pdf.cell(200, 10, txt="OncoAid - Breast Cancer Detection Report", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Prediction: {st.session_state.pred_class}", ln=True)
+        pdf.cell(200, 10, txt=f"Confidence: {st.session_state.confidence*100:.2f}%", ln=True)
+        pdf.ln(10)
+
+        pdf.cell(200, 10, txt="Model Explanation:", ln=True)
+        pdf.multi_cell(0, 10, txt=f"""
+Grad-CAM++ provides the regions of interest in the image that influenced the model's decision.
+Red areas show high influence, while blue areas are less impactful.
+
+Integrated Gradients assigns each pixel an importance value, helping explain which areas influenced the final classification.
+        """)
+        pdf.ln(10)
+
+        img_bytes = image_to_bytes(st.session_state.pil_resized)
+        pdf.image(BytesIO(img_bytes), x=10, y=pdf.get_y(), w=100)
+
+        pdf.output("prediction_report.pdf")
+        st.success("PDF Exported!")
+
+# ✅ Main flow
+def main():
+    st.set_page_config(page_title="OncoAid - Breast Cancer Prediction", layout="wide")
+    if "page" not in st.session_state:
+        st.session_state.page = 1
     if st.session_state.page == 1:
         page_1()
     elif st.session_state.page == 2:
         page_2()
+
+if __name__ == "__main__":
+    main()
+
