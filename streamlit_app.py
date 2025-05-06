@@ -129,6 +129,20 @@ def page_1():
             st.session_state.input_tensor = input_tensor
             st.session_state.pred_idx = pred_idx
             st.session_state.pil_resized = pil_resized
+
+            # Append the new prediction to history
+            if 'prediction_history' not in st.session_state:
+                st.session_state.prediction_history = []
+            st.session_state.prediction_history.append({
+                'pred_class': pred_class,
+                'confidence': confidence,
+                'probs': probs,
+                'raw_img_np': raw_img_np,
+                'input_tensor': input_tensor,
+                'pred_idx': pred_idx,
+                'pil_resized': pil_resized
+            })
+            
             st.session_state.page = 2
             st.rerun()
 
@@ -221,55 +235,15 @@ After the image is analyzed by the AI model, the prediction isn't just a single 
 ### 🧠 Grad-CAM++ Explanation (with Color Legend)
 This image uses a heatmap overlay to show where the AI model focused when making its decision.
 
-🔴 **Red/Yellow Areas**: These are the most influential regions — they had a strong impact on the prediction.
+🔴 **Red/Orange Areas**: Areas the model considers most important for its decision.
 
-🟢 **Blue Areas**: These regions were considered less important during classification.
-
-#### Integrated Gradients (IG) Explanation
-The **Integrated Gradients** method assigns importance scores to each pixel in the image, based on how much it contributes to the final prediction.
-
-- 🔴 **Red Areas**: Areas with the highest influence on the final decision.
-- 🟢 **Blue Areas**: Less influential regions.
-
-This provides additional transparency into the model’s reasoning by highlighting significant regions for the final decision.
+🟢 **Green/Blue Areas**: Areas that are considered less significant.
     """)
 
-    # ✅ Export PDF
-    if st.button("Export as PDF"):
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-
-        pdf.cell(200, 10, txt="OncoAid - Breast Cancer Detection Report", ln=True, align="C")
-        pdf.cell(200, 10, txt=f"Prediction: {st.session_state.pred_class}", ln=True)
-        pdf.cell(200, 10, txt=f"Confidence: {st.session_state.confidence*100:.2f}%", ln=True)
-        pdf.ln(10)
-
-        pdf.cell(200, 10, txt="Model Explanation:", ln=True)
-        pdf.multi_cell(0, 10, txt=f"""
-Grad-CAM++ provides the regions of interest in the image that influenced the model's decision.
-Red areas show high influence, while blue areas are less impactful.
-
-Integrated Gradients assigns each pixel an importance value, helping explain which areas influenced the final classification.
-        """)
-        pdf.ln(10)
-
-        img_bytes = image_to_bytes(st.session_state.pil_resized)
-        pdf.image(BytesIO(img_bytes), x=10, y=pdf.get_y(), w=100)
-
-        pdf.output("prediction_report.pdf")
-        st.success("PDF Exported!")
-
-# ✅ Main flow
-# ✅ Main flow
+# ✅ Main Navigation Logic
 def main():
-    st.set_page_config(page_title="OncoAid - Breast Cancer Prediction", layout="wide")
-    if "page" not in st.session_state:
+    if 'page' not in st.session_state:
         st.session_state.page = 1
-    if "uploaded_file" not in st.session_state:
-        st.session_state.uploaded_file = None
-
     if st.session_state.page == 1:
         page_1()
     elif st.session_state.page == 2:
