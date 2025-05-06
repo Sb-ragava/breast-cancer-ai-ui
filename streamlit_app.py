@@ -12,7 +12,6 @@ import os
 import gdown
 from io import BytesIO
 import base64
-from fpdf import FPDF
 
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -109,8 +108,8 @@ def page_1():
 
     if st.session_state.get("uploaded_file") is not None:
         if st.button("Predict"):
-            # Reset the session state for each new prediction
-            st.session_state.clear()  # This clears previous predictions and variables
+            if 'prediction_history' not in st.session_state:
+                st.session_state.prediction_history = []
 
             input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
 
@@ -121,18 +120,6 @@ def page_1():
                 pred_class = class_names[pred_idx]
                 confidence = probs[pred_idx]
 
-            # Save the new prediction data
-            st.session_state.pred_class = pred_class
-            st.session_state.confidence = confidence
-            st.session_state.probs = probs
-            st.session_state.raw_img_np = raw_img_np
-            st.session_state.input_tensor = input_tensor
-            st.session_state.pred_idx = pred_idx
-            st.session_state.pil_resized = pil_resized
-
-            # Append the new prediction to history
-            if 'prediction_history' not in st.session_state:
-                st.session_state.prediction_history = []
             st.session_state.prediction_history.append({
                 'pred_class': pred_class,
                 'confidence': confidence,
@@ -142,7 +129,17 @@ def page_1():
                 'pred_idx': pred_idx,
                 'pil_resized': pil_resized
             })
-            
+
+            if len(st.session_state.prediction_history) > 10:
+                st.session_state.prediction_history.pop(0)
+
+            st.session_state.pred_class = pred_class
+            st.session_state.confidence = confidence
+            st.session_state.probs = probs
+            st.session_state.raw_img_np = raw_img_np
+            st.session_state.input_tensor = input_tensor
+            st.session_state.pred_idx = pred_idx
+            st.session_state.pil_resized = pil_resized
             st.session_state.page = 2
             st.rerun()
 
@@ -188,8 +185,9 @@ def page_2():
 
     st.pyplot(fig)
 
-    st.markdown(""" 
+    st.markdown("""
 ### 🔍 Understanding the Prediction Distribution
+
 After the image is analyzed by the AI model, the prediction isn't just a single label — it's a distribution of confidence across all possible classes: **Benign**, **Malignant**, and **Normal**. This helps provide transparency into how confident the model is in its decision.
 
 #### 🟦 Bar Chart:
@@ -201,6 +199,12 @@ After the image is analyzed by the AI model, the prediction isn't just a single 
 - The pie chart provides a **visual proportion** of the prediction confidence for each class.
 - It helps quickly understand which class the model is leaning towards.
 - The class with the **largest slice** is the model's top prediction.
+
+#### 🎨 Chart Color Legend:
+- Each class (Benign, Malignant, Normal) has a **consistent color** across the bar and pie charts.
+- These colors help visually connect the data in both chart types.
+
+These visualizations give you a better sense of the model's certainty, and whether the prediction is strong or borderline — which can guide further medical review.
     """)
 
     resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
@@ -231,19 +235,59 @@ After the image is analyzed by the AI model, the prediction isn't just a single 
     with col3:
         st.image(heatmap, caption="Integrated Gradients", use_container_width=True)
 
-    st.markdown(""" 
+    st.markdown("""
 ### 🧠 Grad-CAM++ Explanation (with Color Legend)
-This image uses a heatmap overlay to show where the AI model focused when making its decision.
+This image uses a heatmap overlay to show where the AI model focused when making its decision:
 
-🔴 **Red/Orange Areas**: Areas the model considers most important for its decision.
+🔴 **Red/Yellow Areas**: These are the most influential regions — they had a strong impact on the AI's prediction. Think of them as the "attention hotspots" the model looked at while deciding whether the case is Benign, Malignant, or Normal.
 
-🟢 **Green/Blue Areas**: Areas that are considered less significant.
+🟠 **Orange Zones**: These had a moderate influence — the model considered them, but they were not the primary decision drivers.
+
+🔵 **Blue/Cooler Areas**: These parts of the image were less relevant to the model's decision — they contributed very little to the classification result.
+
+### 🎯 Integrated Gradients Explanation
+This image reveals which individual pixels in the scan had the most influence on the AI's prediction.
+
+🌟 **Brighter dots or regions** show pixels that strongly supported the model's decision — they contain patterns or textures the model recognized as important.
+
+⚫ **Darker or less visible areas** contributed less or not at all to the prediction.
+
+This pixel-level attribution helps highlight fine-grained features like tissue edges, masses, or subtle abnormalities.
+
+Unlike Grad-CAM++, which gives a broad area of focus, Integrated Gradients dives deeper — it shows the tiny details the model noticed and used as part of its reasoning.
+
+This fine-resolution view provides deeper insight into how the AI sees the image — helping radiologists and clinicians validate whether the highlighted features truly matter.
     """)
 
-# ✅ Main Navigation Logic
+    gradcam_pil = Image.fromarray(visualization)
+    ig_pil = Image.fromarray((heatmap * 255).astype(np.uint8), mode="L")
+
+    st.download_button(
+        label="Download Grad-CAM++ Image",
+        data=image_to_bytes(gradcam_pil),
+        file_name="grad_cam_image.png",
+        mime="image/png"
+    )
+
+    st.download_button(
+        label="Download IG Image",
+        data=image_to_bytes(ig_pil),
+        file_name="ig_image.png",
+        mime="image/png"
+    )
+
+    if st.button("Back"):
+        st.session_state.page = 1
+        st.rerun()
+
+# ✅ Main function to control pages
 def main():
+    st.set_page_config(page_title="Streamlit Multi-Page App")
+
     if 'page' not in st.session_state:
         st.session_state.page = 1
+        st.session_state.pred_class = None
+
     if st.session_state.page == 1:
         page_1()
     elif st.session_state.page == 2:
