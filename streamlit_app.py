@@ -1,7 +1,3 @@
-# ✅ Disable Streamlit's file watcher to avoid PyTorch __path__._path crash
-import os
-os.environ["STREAMLIT_FILE_WATCHER_TYPE"] = "none"
-
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -12,6 +8,7 @@ from PIL import Image
 import timm
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
+import os
 import gdown
 from io import BytesIO
 import base64
@@ -110,11 +107,10 @@ def page_1():
     if uploaded_file:
         st.session_state.uploaded_file = uploaded_file
 
-    if st.session_state.uploaded_file is not None:
+    if st.session_state.get("uploaded_file") is not None:
         if st.button("Predict"):
-            st.session_state.clear()
-            st.session_state.uploaded_file = uploaded_file
-            st.session_state.prediction_history = st.session_state.get("prediction_history", [])
+            # Reset the session state for each new prediction
+            st.session_state.clear()  # This clears previous predictions and variables
 
             input_tensor, raw_img_np, pil_resized = preprocess_image(st.session_state.uploaded_file)
 
@@ -125,6 +121,7 @@ def page_1():
                 pred_class = class_names[pred_idx]
                 confidence = probs[pred_idx]
 
+            # Save the new prediction data
             st.session_state.pred_class = pred_class
             st.session_state.confidence = confidence
             st.session_state.probs = probs
@@ -133,20 +130,9 @@ def page_1():
             st.session_state.pred_idx = pred_idx
             st.session_state.pil_resized = pil_resized
             st.session_state.page = 2
-
-            st.session_state.prediction_history.append({
-                "pred_class": pred_class,
-                "confidence": confidence,
-                "probs": probs,
-                "raw_img_np": raw_img_np,
-                "input_tensor": input_tensor,
-                "pred_idx": pred_idx,
-                "pil_resized": pil_resized
-            })
-
             st.rerun()
 
-    if st.session_state.prediction_history:
+    if 'prediction_history' in st.session_state and st.session_state.prediction_history:
         st.markdown("---")
         st.subheader("Prediction History")
         for idx, entry in enumerate(reversed(st.session_state.prediction_history)):
@@ -190,10 +176,18 @@ def page_2():
 
     st.markdown(""" 
 ### 🔍 Understanding the Prediction Distribution
-Each image is classified into one of three categories — **Benign**, **Malignant**, or **Normal**. The bar chart and pie chart above give a visual breakdown of the model's confidence.
-- A higher percentage in one class indicates stronger confidence.
-- If percentages are close, further clinical evaluation is recommended.
-""")
+After the image is analyzed by the AI model, the prediction isn't just a single label — it's a distribution of confidence across all possible classes: **Benign**, **Malignant**, and **Normal**. This helps provide transparency into how confident the model is in its decision.
+
+#### 🟦 Bar Chart:
+- The bar chart shows the exact **probability scores** for each class as predicted by the model.
+- **Taller bars** indicate higher confidence.
+- This is useful for comparing how close or far apart the predictions are.
+
+#### 🕪 Pie Chart:
+- The pie chart provides a **visual proportion** of the prediction confidence for each class.
+- It helps quickly understand which class the model is leaning towards.
+- The class with the **largest slice** is the model's top prediction.
+    """)
 
     resnet_input = preprocess_for_resnet(st.session_state.pil_resized)
     target_layers = [resnet_model.model.layer4[-1]]
@@ -225,11 +219,22 @@ Each image is classified into one of three categories — **Benign**, **Malignan
 
     st.markdown(""" 
 ### 🧠 Grad-CAM++ Explanation (with Color Legend)
-- **Red/Yellow Areas**: High importance regions where the model focused most.
-- **Blue/Green Areas**: Low importance.
-- Use this to verify if the model focused on tumor-specific regions or irrelevant ones.
-""")
+This image uses a heatmap overlay to show where the AI model focused when making its decision.
 
+🔴 **Red/Yellow Areas**: These are the most influential regions — they had a strong impact on the prediction.
+
+🟢 **Blue Areas**: These regions were considered less important during classification.
+
+#### Integrated Gradients (IG) Explanation
+The **Integrated Gradients** method assigns importance scores to each pixel in the image, based on how much it contributes to the final prediction.
+
+- 🔴 **Red Areas**: Areas with the highest influence on the final decision.
+- 🟢 **Blue Areas**: Less influential regions.
+
+This provides additional transparency into the model’s reasoning by highlighting significant regions for the final decision.
+    """)
+
+    # ✅ Export PDF
     if st.button("Export as PDF"):
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)
@@ -242,7 +247,12 @@ Each image is classified into one of three categories — **Benign**, **Malignan
         pdf.ln(10)
 
         pdf.cell(200, 10, txt="Model Explanation:", ln=True)
-        pdf.multi_cell(0, 10, txt="Grad-CAM++ and Integrated Gradients provide transparency into the model’s prediction...")
+        pdf.multi_cell(0, 10, txt=f"""
+Grad-CAM++ provides the regions of interest in the image that influenced the model's decision.
+Red areas show high influence, while blue areas are less impactful.
+
+Integrated Gradients assigns each pixel an importance value, helping explain which areas influenced the final classification.
+        """)
         pdf.ln(10)
 
         img_bytes = image_to_bytes(st.session_state.pil_resized)
@@ -251,14 +261,13 @@ Each image is classified into one of three categories — **Benign**, **Malignan
         pdf.output("prediction_report.pdf")
         st.success("PDF Exported!")
 
-# ✅ Main App Logic
+# ✅ Main flow
 def main():
     st.set_page_config(page_title="OncoAid - Breast Cancer Prediction", layout="wide")
-
-    # Ensure all needed session states are initialized
-    for key in ["page", "uploaded_file", "prediction_history"]:
-        if key not in st.session_state:
-            st.session_state[key] = [] if key == "prediction_history" else None
+    if "page" not in st.session_state:
+        st.session_state.page = 1
+    if "uploaded_file" not in st.session_state:
+        st.session_state.uploaded_file = None
 
     if st.session_state.page == 1:
         page_1()
