@@ -262,14 +262,14 @@ Integrated Gradients assigns each pixel an importance value, helping explain whi
         st.success("PDF Exported!")
 
 # ✅ Main flow
+# ✅ Main flow
 def main():
-    st.set_page_config(page_title="Streamlit Multi-Page App")
-
-    # Initialize the page if it's not already set
-    if 'page' not in st.session_state:
+    st.set_page_config(page_title="OncoAid - Breast Cancer Prediction", layout="wide")
+    if "page" not in st.session_state:
         st.session_state.page = 1
+    if "uploaded_file" not in st.session_state:
+        st.session_state.uploaded_file = None
 
-    # Conditional page flow based on the current page in session state
     if st.session_state.page == 1:
         page_1()
     elif st.session_state.page == 2:
@@ -277,4 +277,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
